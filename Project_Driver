@@ -1,1 +1,32 @@
 
+import os
+
+from Final_Project.utils import (
+    interpret_sift_features,
+    interpret_harris_response,
+    interpret_hog_descriptors,
+)
+
+# List of image file paths.
+file_paths = [
+    "images/reference.jpg",
+    "images/image 1.jpg",
+    "images/image 2.jpg",
+    "images/image 3.jpg",
+    "images/image 4.jpg"
+]
+
+# Perform HOG-based analysis.
+hog_defect_paths = interpret_hog_descriptors(file_paths)
+hog_defects = [os.path.basename(path) for path in hog_defect_paths]
+print("Defects from HOG:", hog_defects)
+
+# Perform Harris-based analysis.
+harris_defect_paths = interpret_harris_response(file_paths)
+harris_defects = [os.path.basename(path) for path in harris_defect_paths]
+print("Defects from Harris:", harris_defects)
+
+# Perform SIFT-based analysis.
+sift_defect_paths = interpret_sift_features(file_paths)
+sift_defects = [os.path.basename(path) for path in sift_defect_paths]
+print("Defects from SIFT:", sift_defects)
