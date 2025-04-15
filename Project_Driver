@@ -1,32 +1,58 @@
 
-import os
+"""
+main.py
 
+This module runs various computer vision analyses—including traditional techniques (HOG, Harris, SIFT)
+and a deep learning feature comparison using a pretrained model. The results (defects) are printed
+based on a similarity threshold and further visualized.
+"""
+
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
+
+from Final_Project.ml_model import interpret_model_features, visualize_model_features
 from Final_Project.utils import (
     interpret_sift_features,
     interpret_harris_response,
     interpret_hog_descriptors,
 )
 
-# List of image file paths.
+# List of full image file paths.
 file_paths = [
-    "images/reference.jpg",
-    "images/image 1.jpg",
-    "images/image 2.jpg",
-    "images/image 3.jpg",
-    "images/image 4.jpg"
+    "Final_Project/images/reference.jpg",
+    "Final_Project/images/image 1.jpg",
+    "Final_Project/images/image 2.jpg",
+    "Final_Project/images/image 3.jpg",
+    "Final_Project/images/image 4.jpg"
 ]
 
+reference_path = "Final_Project/images/reference.jpg"
+
+print("\n")
+# Analyze images using the deep learning model. Images with a cosine similarity below 0.999 are considered defects.
+defects = interpret_model_features(reference_path, file_paths, 0.999)
+print("Defects from DL model:", defects)
+
+print("\n")
+# Display the similarity between the reference image and each test image.
+visualize_model_features(reference_path, file_paths)
+
+print("\n")
 # Perform HOG-based analysis.
 hog_defect_paths = interpret_hog_descriptors(file_paths)
 hog_defects = [os.path.basename(path) for path in hog_defect_paths]
 print("Defects from HOG:", hog_defects)
 
+print("\n")
 # Perform Harris-based analysis.
 harris_defect_paths = interpret_harris_response(file_paths)
 harris_defects = [os.path.basename(path) for path in harris_defect_paths]
 print("Defects from Harris:", harris_defects)
 
+print("\n")
 # Perform SIFT-based analysis.
 sift_defect_paths = interpret_sift_features(file_paths)
 sift_defects = [os.path.basename(path) for path in sift_defect_paths]
 print("Defects from SIFT:", sift_defects)
+
+print("\n")
