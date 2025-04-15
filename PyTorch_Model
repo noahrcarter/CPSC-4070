@@ -1,0 +1,118 @@
+"""
+ml_model.py
+
+This module provides deep learning-based feature extraction and comparison functionality using a pretrained
+ResNet model. It includes methods to extract deep features from images, compare these features, identify defects
+based on a similarity threshold, and visualize the similarity scores.
+"""
+
+import os
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision.models as models
+from torchvision import transforms
+from PIL import Image
+
+# Load the pretrained ResNet model.
+_model = models.resnet18(pretrained=True)
+# Remove the final classification layer to use the network as a feature extractor.
+_feature_extractor = nn.Sequential(*list(_model.children())[:-1])
+_feature_extractor.eval()  # Set the model to evaluation mode.
+
+# Define the image preprocessing pipeline to match the network's input requirements.
+_preprocess = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225]),
+])
+
+def get_deep_features(image_path):
+    """
+    Extract deep features from an image using the pretrained model.
+
+    Args:
+        image_path (str): Full path to the input image.
+
+    Returns:
+        torch.Tensor: Flattened feature vector extracted from the image.
+    """
+    image = Image.open(image_path).convert("RGB")
+    input_tensor = _preprocess(image)
+    # Add a batch dimension so that the input shape is [1, C, H, W].
+    input_batch = input_tensor.unsqueeze(0)
+
+    with torch.no_grad():
+        features = _feature_extractor(input_batch)
+
+    # Flatten the tensor (e.g., from [1, 512, 1, 1] to [1, 512]).
+    flat_features = features.view(features.size(0), -1)
+    return flat_features
+
+def compare_features(reference, test):
+    """
+    Compute the cosine similarity between two feature vectors.
+
+    Args:
+        reference (torch.Tensor): Feature vector of the reference image.
+        test (torch.Tensor): Feature vector of a test image.
+
+    Returns:
+        float: Cosine similarity value.
+    """
+    similarity = F.cosine_similarity(reference, test)
+    return similarity.item()
+
+def interpret_model_features(reference_path, file_paths, threshold):
+    """
+    Compare each image in file_paths against the reference image using cosine similarity.
+    If the similarity is less than the given threshold, the image is considered a defect.
+
+    Args:
+        reference_path (str): Full path to the reference image.
+        file_paths (list of str): List of full image file paths.
+        threshold (float): Similarity threshold under which an image is classified as a defect.
+
+    Returns:
+        list of str: Basenames of the defect images.
+    """
+    ref_features = get_deep_features(reference_path)
+    defect_paths = []
+
+    for path in file_paths:
+        test_features = get_deep_features(path)
+        sim_value = F.cosine_similarity(ref_features, test_features)
+        if sim_value.item() < threshold:
+            defect_paths.append(path)
+
+    # Convert full paths to basenames.
+    defects = [os.path.basename(path) for path in defect_paths]
+    return defects
+
+def visualize_model_features(reference_path, file_paths):
+    """
+    Compute and display the cosine similarity between the reference image and each image in file_paths.
+
+    Args:
+        reference_path (str): Full path to the reference image.
+        file_paths (list of str): List of full image file paths.
+
+    Returns:
+        str: "success" if the visualization completes.
+    """
+    ref_features = get_deep_features(reference_path)
+    response_dict = {}
+
+    for path in file_paths:
+        img_features = get_deep_features(path)
+        sim_value = compare_features(ref_features, img_features)
+        response_dict[path] = sim_value
+
+    for full_path, sim in response_dict.items():
+        file_name = os.path.basename(full_path)
+        print(f"Similarity between reference and {file_name}: {sim}")
+
+    return "success"
+
